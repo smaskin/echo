@@ -1,56 +1,57 @@
-import json
 import sys
-from getopt import getopt
-from socket import *
-
-DEFAULT_IP = '0.0.0.0'
-DEFAULT_PORT = 7777
-WORKERS = 1
+import socket
+import select
+from helpers import console
+from jim.process import *
 
 
-def get_client(sock, argv):
-    sock.bind(get_params(argv))
-    sock.listen(WORKERS)
-    worker, address = sock.accept()
-    return worker
+def read_requests(r_clients, all_clients):
+    responses = {}
+    for c in r_clients:
+        try:
+            responses[c] = receive(c)
+        except:
+            print('Клиент {} {} отключился'.format(c.fileno(), c.getpeername()))
+            all_clients.remove(c)
+
+    return responses
 
 
-def receive_message(sock):
-    message = b""
-    while True:
-        piece = sock.recv(10)
-        message += piece
-        if len(piece) < 10:
-            break
-    return message.decode()
-
-
-def create_response(status):
-    message = {'status': 'Ok' if status else 'Failure'}
-    return json.dumps(message).encode()
-
-
-def send_response(sock, msg):
-    return sock.send(msg)
-
-
-def get_params(argv):
-    optlist, args = getopt(argv[1:], 'a:p:')
-    ip = DEFAULT_IP
-    port = DEFAULT_PORT
-    for opt, arg in optlist:
-        if opt == '-a':
-            ip = arg
-        elif opt == '-p':
-            port = arg
-    return ip, port
+def write_responses(requests, w_clients, all_clients):
+    for sender in requests:
+        for c in w_clients:
+            try:
+                response = requests[sender]
+                response['type'] = MESSAGE_TYPE_REQUEST
+                send(c, response)
+            except:
+                print('Клиент {} {} отключился.'.format(c.fileno(), c.getpeername()))
+                c.close()
+                all_clients.remove(c)
 
 
 if __name__ == '__main__':
-    s = socket()
-    client = get_client(s, sys.argv)
-    request = receive_message(client)
-    response = create_response(True)
-    print('Ok' if send_response(client, response) else 'Failure')
-    s.close()
+    server = socket.socket()
+    host = console.host_params(sys.argv)
+    server.bind(host)
+    server.listen(WORKERS)
+    server.settimeout(0.2)
+    clients = []
+    while True:
+        try:
+            client, address = server.accept()
+        except OSError as e:
+            pass
+        else:
+            print('Получен запрос на соединение от {}'.format(address))
+            clients.append(client)
+        finally:
+            read = []
+            write = []
+            try:
+                read, write, e = select.select(clients, clients, [], 0)
+            except Exception as e:
+                print('Исключение при опросе клиентов - {}'.format(e.args))
 
+            requests = read_requests(read, clients)
+            write_responses(requests, write, clients)

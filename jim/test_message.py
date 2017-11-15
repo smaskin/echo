@@ -1,20 +1,9 @@
-import message
+import json
+
+from message import Message
 
 
-def test_create():
-    pack = message.create('Test message')
-    decoded = message.decode(pack)
-    decoded.pop('time')
-    assert decoded == {
-        'message': 'Test message',
-        'status': 200,
-        'type': 'default'
-    }
-
-
-def test_encode():
-    assert message.encode({'status': message.MESSAGE_STATUS_OK}) == b'{"status": 200}'
-
-
-def test_decode():
-    assert message.decode(b'{"status": 200}') == {'status': message.MESSAGE_STATUS_OK}
+def test_common():
+    message = Message('Test message')
+    assert message.dict == {"message": "Test message"}
+    assert json.loads(message.pack().decode())['message'] == 'Test message'

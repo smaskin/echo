@@ -3,19 +3,16 @@ import time
 from config.params import *
 
 
-def create(msg, type=MESSAGE_TYPE_DEFAULT, status=MESSAGE_STATUS_OK, when=time.time()):
-    message = {
-        'type': type,
-        'status': status,
-        'message': msg,
-        'time': when
-    }
-    return encode(message)
+class Message(object):
+    """
+    Класс JIMСообщение - класс, реализующий сообщение (msg) по протоколу JIM.
+    """
+    def __init__(self, text='', type=MESSAGE_TYPE_DEFAULT, status=MESSAGE_STATUS_OK, when=time.time()):
+        self.__msg = {'type': type, 'status': status, 'message': text, 'time': when}
 
+    @property
+    def dict(self):
+        return self.__msg
 
-def encode(msg):
-    return json.dumps(msg).encode()
-
-
-def decode(msg):
-    return json.loads(msg.decode())
+    def pack(self):
+        return json.dumps(self.__msg).encode()

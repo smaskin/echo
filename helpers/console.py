@@ -14,3 +14,7 @@ def host_params(argv, strict=False):
         elif opt == '-p':
             port = arg
     return ip, port
+
+
+def is_write_mode(argv):
+    return '-w' in argv

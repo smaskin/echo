@@ -2,56 +2,71 @@ import sys
 import socket
 import select
 from helpers import console
-from jim.process import *
+from request import Request
+from response import Response
+from config.params import *
 
 
-def read_requests(r_clients, all_clients):
-    responses = {}
-    for c in r_clients:
-        try:
-            responses[c] = receive(c)
-        except:
-            print('Клиент {} {} отключился'.format(c.fileno(), c.getpeername()))
-            all_clients.remove(c)
+class Server():
+    """
+    Класс Сервер - базовый класс сервера мессенджера;
+    может иметь разных потомков - работающих с потоками или выполняющих асинхронную обработку.
+    """
+    def __init__(self, address):
+        self.__server = socket.socket()
+        self.__server.bind(address)
+        self.__server.listen(WORKERS)
+        self.__server.settimeout(0.2)
+        self.__clients = []
+        self.__requests = []
 
-    return responses
-
-
-def write_responses(requests, w_clients, all_clients):
-    for sender in requests:
-        for c in w_clients:
+    def listen(self):
+        while True:
             try:
-                response = requests[sender]
-                response['type'] = MESSAGE_TYPE_REQUEST
-                send(c, response)
+                client, address = self.__server.accept()
+            except OSError as e:
+                pass
+            else:
+                print('Получен запрос на соединение от {}'.format(address))
+                self.__clients.append(client)
+            finally:
+                self.__io()
+
+    def __io(self):
+        r = []
+        w = []
+        try:
+            r, w, e = select.select(self.__clients, self.__clients, [], 0)
+        except Exception as e:
+            print('Исключение при опросе клиентов - {}'.format(e.args))
+        self.__input(r)
+        self.__output(w)
+
+    def __input(self, clients):
+        for c in clients:
+            try:
+                pack = c.recv(MESSAGE_SIZE)
+                self.__requests.append(Request(pack))
             except:
-                print('Клиент {} {} отключился.'.format(c.fileno(), c.getpeername()))
-                c.close()
-                all_clients.remove(c)
+                self.__remove_client(c)
+
+    def __output(self, clients):
+        while len(self.__requests):
+            request = self.__requests.pop()
+            response = Response(request)
+            print('Ответ {} клиентам, запроса "{}".'.format(len(clients), request.text))
+            for c in clients:
+                try:
+                    c.send(response.pack())
+                except:
+                    self.__remove_client(c)
+
+    def __remove_client(self, c):
+        c.close()
+        self.__clients.remove(c)
 
 
 if __name__ == '__main__':
-    server = socket.socket()
     host = console.host_params(sys.argv)
-    server.bind(host)
-    server.listen(WORKERS)
-    server.settimeout(0.2)
-    clients = []
-    while True:
-        try:
-            client, address = server.accept()
-        except OSError as e:
-            pass
-        else:
-            print('Получен запрос на соединение от {}'.format(address))
-            clients.append(client)
-        finally:
-            read = []
-            write = []
-            try:
-                read, write, e = select.select(clients, clients, [], 0)
-            except Exception as e:
-                print('Исключение при опросе клиентов - {}'.format(e.args))
-
-            requests = read_requests(read, clients)
-            write_responses(requests, write, clients)
+    s = Server(host)
+    s.listen()

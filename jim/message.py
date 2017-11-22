@@ -1,18 +1,23 @@
 import json
-import time
-from config.params import *
 
 
 class Message(object):
     """
     Класс JIMСообщение - класс, реализующий сообщение (msg) по протоколу JIM.
+
+    Все объекты имеют ограничения длины (количество символов):
+        ● “action”​-поле: 15 символов (сейчас самое длинное название - “authenticate” (11 символов);
+        вряд ли должно понадобиться что-то длиннее);
+        ● “response”​-поле с кодом ответа сервера: 3 цифры;
+        ● имя​​пользователя​/ название​​чата​(name): 25 символов;
+        ● сообщение​: максимум 500 символов ( ” ” ).
+
+    Итоговое ограничение для JSON-объекта - 640 символов (что оставляет возможность добавить
+    дополнительные поля или изменить имеющиеся).
+
     """
-    def __init__(self, text='', type=MESSAGE_TYPE_DEFAULT, status=MESSAGE_STATUS_OK, when=time.time()):
-        self.__msg = {'type': type, 'status': status, 'message': text, 'time': when}
+    def __init__(self, **kwargs):
+        self._raw = kwargs
 
-    @property
-    def dict(self):
-        return self.__msg
-
-    def pack(self):
-        return json.dumps(self.__msg).encode()
+    def __bytes__(self):
+        return json.dumps(self._raw).encode()

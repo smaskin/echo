@@ -2,7 +2,6 @@ import sys
 import socket
 import select
 from helpers import console
-from request import Request
 from response import Response
 from config.params import *
 
@@ -18,7 +17,7 @@ class Server():
         self.__server.listen(WORKERS)
         self.__server.settimeout(0.2)
         self.__clients = []
-        self.__requests = []
+        self.__parcels = []
 
     def listen(self):
         while True:
@@ -46,18 +45,19 @@ class Server():
         for c in clients:
             try:
                 pack = c.recv(MESSAGE_SIZE)
-                self.__requests.append(Request(pack))
+                self.__parcels.append(pack)
             except:
                 self.__remove_client(c)
 
     def __output(self, clients):
-        while len(self.__requests):
-            request = self.__requests.pop()
-            response = Response(request)
-            print('Ответ {} клиентам, запроса "{}".'.format(len(clients), request.text))
+        while len(self.__parcels):
+            parcel = self.__parcels.pop()
+            print('Запрос "{}".'.format(parcel))
+            response = Response(parcel)
+            print('Ответ {} клиентам, {} '.format(len(clients), response._raw))
             for c in clients:
                 try:
-                    c.send(response.pack())
+                    c.send(bytes(response))
                 except:
                     self.__remove_client(c)
 

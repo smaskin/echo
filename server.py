@@ -1,12 +1,13 @@
-import sys
-import socket
 import select
+import socket
+import sys
+
+from config.params import *
 from helpers import console
 from response import Response
-from config.params import *
 
 
-class Server():
+class Server:
     """
     Класс Сервер - базовый класс сервера мессенджера;
     может иметь разных потомков - работающих с потоками или выполняющих асинхронную обработку.
@@ -44,17 +45,15 @@ class Server():
     def __input(self, clients):
         for c in clients:
             try:
-                pack = c.recv(MESSAGE_SIZE)
-                self.__parcels.append(pack)
+                parcel = c.recv(MESSAGE_SIZE)
+                self.__parcels.append(parcel)
             except:
                 self.__remove_client(c)
 
     def __output(self, clients):
         while len(self.__parcels):
             parcel = self.__parcels.pop()
-            print('Запрос "{}".'.format(parcel))
             response = Response(parcel)
-            print('Ответ {} клиентам, {} '.format(len(clients), response._raw))
             for c in clients:
                 try:
                     c.send(bytes(response))

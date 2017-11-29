@@ -1,72 +1,68 @@
-from message import Message
+import time
+import message
+from db.server_repo import ServerRepo
 
 
-class Response(Message):
-    """
-    Класс JIMОтвет - класс, реализующий ответ (response) по протоколу JIM.
-        Ответы сервера должны содержать поле “response”, а также могут содержать поле “alert”/“error” с текстом ошибки.
-        В случае, если какое-то действие требует авторизации, сервер должен ответить соответствующим кодом ошибки 401.
-        После подключения при необходимости авторизации клиент должен отправить сообщение авторизации c логином/паролем, например:
-            {
-                "action": "authenticate",
-                "time": <unix timestamp>,
-                "user": {
-                    "account_name": "C0deMaver1ck",
-                    "password": "CorrectHorseBatteryStaple"
-                }
-            }
-        В ответ сервер может прислать один из кодов:
-            {
-                "response": 200,
-                "alert":"Необязательное сообщение/уведомление"
-            }
-            {
-                "response": 402,
-                "error": "This could be "wrong password" or "no account with that name""
-            }
-            {
-                "response": 409,
-                "error": "Someone is already connected with the given user name"
-            }
-        Отключение от сервера должно сопровождаться сообщением “quit”:
-            {
-                "action": "quit"
-            }
-        Коды​​ответов​​сервера
-            JIM-протокол использует коды ошибок HTTP (они уже многим знакомы).
-            Поддерживаемые коды ошибок:
-                ● 1xx​- информационные сообщения:
-                    ○ 100​- базовое уведомление;
-                    ○ 101​- важное уведомление.
-                ● 2xx​- успешное завершение:
-                    ○ 200​- OK;
-                    ○ 201​(created) - объект создан;
-                    ○ 202​(accepted)- подтверждение.
-                ● 4xx​- ошибка на стороне клиента:
-                    ○ 400​- неправильный запрос/JSON-объект;
-                    ○ 401​- не авторизован;
-                    ○ 402​- неправильный логин/пароль;
-                    ○ 403​(forbidden) - пользователь заблокирован;
-                    ○ 404​(not found) - пользователь/чат отсутствует на сервере;
-                    ○ 409​(conflict) - уже имеется подключение с указанным логином;
-                    ○ 410​(gone) - адресат существует, но недоступен (offline).
-                ● 5xx​- ошибка на стороне сервера:
-                    ○ 500​- ошибка сервера.
-            Коды ошибок могут быть дополнены новыми кодами.
-        Сообщения-ответы имеют следующий формат (в зависимости от кода ответа):
-            {
-                "response": 1xx / 2xx,
-                "time": <unix timestamp>,
-                "alert": "message (optional for 2xx codes)"
-            }
-            или
-            {
-                "response": 4xx / 5xx,
-                "time": <unix timestamp>,
-                "error": "error message (optional)"
-            }
-    """
-    def __init__(self, parcel, **kwargs):
-        super().__init__(**kwargs)
-        self.__parcel = parcel
-        self._raw['response'] = 200
+class Response:
+    def __init__(self, parcel):
+        print('Запрос "{}".'.format(parcel))
+        self.__parcel = message.unpack(parcel)
+        self.__response = self.__generate()
+
+    def __bytes__(self):
+        return message.pack(self.__response)
+
+    @property
+    def code(self):
+        return self.__response['response']
+
+    def __generate(self):
+        if type(self.__parcel) is dict and 'action' in self.__parcel:
+            controller = self.__get_controller()
+            if self.__parcel['action'] not in dir(controller):
+                result = message.error('Action is not available')
+            else:
+                result = controller.run_action()
+        else:
+            result = message.error('Action is invalid')
+        return result
+
+    def __get_controller(self):
+        # TODO router for different controllers depending on action
+        return Controller(self.__parcel)
+
+
+class BaseController:
+    def __init__(self, parcel):
+        self._parcel = parcel
+        self._repo = ServerRepo()
+
+    def run_action(self):
+        if self.__time_validate():
+            return getattr(self, self._parcel['action'])()
+        else:
+            return message.error('Time is invalid')
+
+    def __time_validate(self):
+        return 'time' in self._parcel and self._parcel['time'] < time.time()
+
+
+class Controller(BaseController):
+    def presence(self):
+        return message.success()
+
+    def msg(self):
+        return message.success()
+
+    def get_contacts(self):
+        count = self._repo.get_contacts()
+        return message.success(quantity=count)
+
+    def contact_list(self):
+        pass
+
+    def add_contact(self):
+        pass
+
+    def del_contact(self):
+        pass

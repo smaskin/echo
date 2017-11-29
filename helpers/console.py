@@ -5,7 +5,7 @@ from config.params import *
 def host_params(argv, strict=False):
     if not strict:
         return argv[1] if len(argv) > 1 else DEFAULT_IP, argv[2] if len(argv) > 2 else DEFAULT_PORT
-    optlist, args = getopt.getopt(argv[1:], 'a:p:w')
+    optlist, args = getopt.getopt(argv[1:], 'a:p:c')
     ip = DEFAULT_IP
     port = DEFAULT_PORT
     for opt, arg in optlist:
@@ -16,5 +16,5 @@ def host_params(argv, strict=False):
     return ip, port
 
 
-def is_write_mode(argv):
-    return '-w' in argv
+def is_console_mode(argv):
+    return '-c' in argv

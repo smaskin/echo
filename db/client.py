@@ -1,8 +1,3 @@
-"""
-Реализовать хранение информации в БД на стороне клиента:
-    -списокконтактов;
-    -историясообщений.
-"""
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base

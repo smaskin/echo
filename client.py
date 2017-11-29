@@ -2,32 +2,31 @@ import sys
 import socket
 from helpers import console
 from config.params import *
-from request import Request
+from app.console.client import Client as ConsoleClient
+from app.desktop.client import Client as GuiClient
 
 
 class Client:
-    """
-    Класс Клиент - класс, реализующий клиентскую часть системы.
-    """
-    def __init__(self, address):
+    def __init__(self, address, controller):
         self.__sock = socket.socket()
         self.__sock.connect(address)
+        self.__controller = controller
 
     def listen(self):
-        return self.__sock.recv(MESSAGE_SIZE)
+        parcel = self.__sock.recv(MESSAGE_SIZE)
+        return self.__controller.get_response(parcel)
 
     def send(self):
-        text = input('Введите сообщение: ')
-        request = Request(text=text)
-        self.__sock.send(bytes(request))
+        self.__sock.send(self.__controller.get_request())
 
     def close(self):
         self.__sock.close()
 
 
 if __name__ == '__main__':
-    client = Client(console.host_params(sys.argv, True))
+    host = console.host_params(sys.argv, True)
+    handler = ConsoleClient() if console.is_console_mode(sys.argv) else GuiClient()
+    client = Client(host, handler)
     while True:
-        if console.is_write_mode(sys.argv):
-            client.send()
+        client.send()
         print(client.listen())

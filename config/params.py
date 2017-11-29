@@ -2,26 +2,4 @@ WORKERS = 5
 MESSAGE_SIZE = 1024
 
 DEFAULT_IP = '0.0.0.0'
-DEFAULT_PORT = 6665
-
-ACTION_PRESENCE = 'presence'
-COMMON_ACTIONS = [
-    ACTION_PRESENCE,
-    'prоbe',
-    'msg',
-    'quit',
-    'authenticate',
-    'join'
-]
-
-ACTION_CONTACT_LIST = "contact_list"
-ACTION_CONTACT_GET = "get_contacts"
-ACTION_CONTACT_ADD = "add_contact"
-ACTION_CONTACT_DEL = "del_contact"
-CONTACT_ACTIONS = [
-    ACTION_CONTACT_LIST,
-    ACTION_CONTACT_GET,
-    ACTION_CONTACT_ADD,
-    ACTION_CONTACT_DEL,
-]
-ACTIONS = COMMON_ACTIONS + CONTACT_ACTIONS
+DEFAULT_PORT = 6666

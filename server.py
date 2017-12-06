@@ -1,22 +1,46 @@
 import select
 import socket
 import sys
-
+import jim
 from config.params import *
-from helpers import console
-from response import Response
+from console import Params
+from db.server_repo import ServerRepo
+
+
+class Handler:
+    def __init__(self):
+        self._repo = ServerRepo()
+
+    def run_action(self, request):
+        if request.action == 'presence':
+            self._repo.add_client(request.account_name)
+            return jim.success()
+        elif request.action == 'quit':
+            return jim.success()
+        elif request.action == 'msg':
+            return jim.success()
+        elif request.action == 'get_contacts':
+            count = self._repo.get_contacts()
+            return jim.success(response=202, quantity=count)
+        elif request.action == 'contact_list':
+            return jim.success()
+        elif request.action == 'add_contact':
+            return jim.success()
+        elif request.action == 'del_contact':
+            return jim.success()
+        elif request.action == 'error':
+            return jim.error(request.msg)
+        else:
+            return jim.error('Action is not available')
 
 
 class Server:
-    """
-    Класс Сервер - базовый класс сервера мессенджера;
-    может иметь разных потомков - работающих с потоками или выполняющих асинхронную обработку.
-    """
     def __init__(self, address):
         self.__server = socket.socket()
         self.__server.bind(address)
         self.__server.listen(WORKERS)
         self.__server.settimeout(0.2)
+        self.__handler = Handler()
         self.__clients = []
         self.__parcels = []
 
@@ -24,10 +48,13 @@ class Server:
         while True:
             try:
                 client, address = self.__server.accept()
+                presence = jim.receive(client)
+                response = self.__handler.run_action(presence)
+                jim.send(client, response)
             except OSError as e:
                 pass
             else:
-                print('Получен запрос на соединение от {}'.format(address))
+                print('Increase connection until {} with {}'.format(len(self.__clients) + 1, address))
                 self.__clients.append(client)
             finally:
                 self.__io()
@@ -38,14 +65,14 @@ class Server:
         try:
             r, w, e = select.select(self.__clients, self.__clients, [], 0)
         except Exception as e:
-            print('Исключение при опросе клиентов - {}'.format(e.args))
+            print('Exception until I/O select - {}'.format(e.args))
         self.__input(r)
         self.__output(w)
 
     def __input(self, clients):
         for c in clients:
             try:
-                parcel = c.recv(MESSAGE_SIZE)
+                parcel = jim.receive(c)
                 self.__parcels.append(parcel)
             except:
                 self.__remove_client(c)
@@ -53,10 +80,15 @@ class Server:
     def __output(self, clients):
         while len(self.__parcels):
             parcel = self.__parcels.pop()
-            response = Response(parcel)
+            response = self.__handler.run_action(parcel)
             for c in clients:
                 try:
-                    c.send(bytes(response))
+                    jim.send(c, response)
+                    if response.response == 202:
+                        # TODO send sub responses
+                        for contact in self.__handler._repo.get_contact_list():
+                            account_name = contact.name
+                            jim.send(c, jim.Message(action='contact_list', account_name=account_name))
                 except:
                     self.__remove_client(c)
 
@@ -66,6 +98,6 @@ class Server:
 
 
 if __name__ == '__main__':
-    host = console.host_params(sys.argv)
-    s = Server(host)
+    params = Params(sys.argv)
+    s = Server(params.server_host)
     s.listen()

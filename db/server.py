@@ -1,12 +1,9 @@
 import time
+
+import os
 from sqlalchemy import *
 from sqlalchemy.orm import *
 from sqlalchemy.ext.declarative import declarative_base
-
-engine = create_engine('sqlite:///server.db')
-
-Session = sessionmaker(bind=engine)
-session = Session()
 
 Base = declarative_base()
 
@@ -28,8 +25,7 @@ class Client(Base):
                             secondaryjoin=id == contact_table.c.contact_id
                             )
 
-    def __init__(self, email, name):
-        self.email = email
+    def __init__(self, name):
         self.name = name
 
     def __repr__(self):
@@ -53,4 +49,8 @@ class History(Base):
         return '<History ({})>'.format(self.ip)
 
 
+engine = create_engine('sqlite:///{}'.format(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'server.db')), echo=False)
 Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+session = Session()
+

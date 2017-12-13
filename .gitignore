@@ -3,5 +3,4 @@
 .cache/
 __pycache__
 runtime/
-/server.db
-/client.db
+/db/server.db

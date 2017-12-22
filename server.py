@@ -13,7 +13,7 @@ class Handler:
 
     def run_action(self, request):
         if request.action == 'presence':
-            self._repo.add_client(request.account_name)
+            self._repo.add_client(request.user_account_name)
             return jim.success()
         elif request.action == 'quit':
             return jim.success()
@@ -54,7 +54,7 @@ class Server:
         while True:
             try:
                 client, address = self.__server.accept()
-                presence = jim.receive(client)
+                presence = jim.receive(client)[0]
                 response = self.__handler.run_action(presence)
                 jim.send(client, response)
             except OSError as e:
@@ -80,7 +80,7 @@ class Server:
         for c in clients:
             try:
                 msg = jim.receive(c)
-                self.__in.append(msg)
+                self.__in.extend(msg)
             except:
                 self.__remove_client(c)
 

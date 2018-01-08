@@ -18,23 +18,39 @@ class Handler:
         elif request.action == 'quit':
             return jim.success()
         elif request.action == 'msg':
-            return jim.success()
+            client = self._repo.get_user_by_name(request.client_name)
+            contacts = client.contacts
+            responses = [jim.success()]
+            for contact in contacts:
+                responses.append(jim.Message(
+                    action='msg',
+                    text=request.text,
+                    to=contact.name,
+                    _from=request.client_name
+                ))
+            return responses
         elif request.action == 'get_contacts':
-            count = self._repo.get_contacts()
-            contacts = self._repo.get_contact_list()
+            contacts = self._repo.get_contact_list(request.client_name)
+            count = len(contacts)
             responses = [jim.success(response=202, quantity=count)]
             for contact in contacts:
                 account_name = contact.name
                 responses.append(jim.Message(action='contact_list', account_name=account_name))
             return responses
-        elif request.action == 'contact_list':
-            return jim.success()
         elif request.action == 'add_contact':
-            return jim.success()
+            try:
+                self._repo.add_contact(request.client_name, request.user_name)
+                return jim.success()
+            except:
+                return jim.error('Contact does not exist')
         elif request.action == 'del_contact':
-            return jim.success()
+            try:
+                self._repo.remove_contact(request.client_name, request.user_name)
+                return jim.success()
+            except:
+                return jim.error('Contact does not exist')
         elif request.action == 'error':
-            return jim.error(request.msg)
+            return jim.error('Error action')
         else:
             return jim.error('Action is not available')
 
@@ -42,11 +58,14 @@ class Handler:
 class Server:
     def __init__(self, address):
         self.__server = socket.socket()
+        self.__server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__server.bind(address)
         self.__server.listen(WORKERS)
         self.__server.settimeout(0.2)
         self.__handler = Handler()
         self.__clients = []
+        self.__dispatchers = {}
+        self.__names = {}
         self.__in = []
         self.__out = []
 
@@ -54,58 +73,54 @@ class Server:
         while True:
             try:
                 client, address = self.__server.accept()
-                presence = jim.receive(client)[0]
-                response = self.__handler.run_action(presence)
-                jim.send(client, response)
+                dispatcher = jim.Dispatcher(client)
+                dispatcher.receive()
+                dispatcher.process(self.__handler)
+                dispatcher.release()
             except OSError as e:
                 pass
             else:
                 print('Increase connection until {} with {}'.format(len(self.__clients) + 1, address))
                 self.__clients.append(client)
+                self.__dispatchers[client] = dispatcher
+                self.__names[dispatcher.client_name] = client
             finally:
-                self.__io()
-
-    def __io(self):
-        r = []
-        w = []
-        try:
-            r, w, e = select.select(self.__clients, self.__clients, [], 0)
-        except Exception as e:
-            print('Exception until I/O select - {}'.format(e.args))
-        self.__input(r)
-        self.__process()
-        self.__output(w)
+                r = []
+                w = []
+                try:
+                    r, w, e = select.select(self.__clients, self.__clients, [], 0)
+                except Exception as e:
+                    print('Exception until I/O select - {}'.format(e.args))
+                self.__input(r)
+                self.__process()
+                self.__output(w)
 
     def __input(self, clients):
         for c in clients:
             try:
-                msg = jim.receive(c)
-                self.__in.extend(msg)
+                dispatcher = self.__dispatchers[c]
+                dispatcher.receive()
+                self.__in.append(dispatcher)
             except:
                 self.__remove_client(c)
 
     def __process(self):
         while len(self.__in):
-            msg = self.__in.pop()
-            responses = self.__handler.run_action(msg)
-            if isinstance(responses, jim.Message):
-                self.__out.append(responses)
-            else:
-                while len(responses):
-                    self.__out.append(responses.pop())
+            dispatcher = self.__in.pop()
+            dispatcher.process(self.__handler)
+            self.__out.append(dispatcher)
 
     def __output(self, clients):
         while len(self.__out):
-            msg = self.__out.pop()
-            for c in clients:
-                try:
-                    jim.send(c, msg)
-                except:
-                    self.__remove_client(c)
+            dispatcher = self.__out.pop()
+            try:
+                dispatcher.release(self.__names)
+            except:
+                self.__remove_client(dispatcher.__sock)
 
     def __remove_client(self, c):
-        c.close()
         self.__clients.remove(c)
+        c.close()
 
 
 if __name__ == '__main__':

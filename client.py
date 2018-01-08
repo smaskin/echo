@@ -4,6 +4,7 @@ import socket
 from threading import Thread
 from queue import Queue
 from console import Params
+from log.client import client_logger
 
 ACTIONS = (
     {
@@ -14,6 +15,16 @@ ACTIONS = (
     {
         'action': 'get_contacts',
         'name': 'Список контактов',
+    },
+    {
+        'action': 'add_contact',
+        'name': 'Добавить контакт',
+        'params': ('user_name',)
+    },
+    {
+        'action': 'del_contact',
+        'name': 'Удалить контакт',
+        'params': ('user_name',)
     },
     {
         'action': 'quit',
@@ -38,9 +49,7 @@ def interact():
 
 
 class Handler:
-    def __init__(self, sock, input_):
-        self._sock = sock
-        self._input = input_
+    def __init__(self):
         self.is_alive = False
 
     def __call__(self):
@@ -58,39 +67,51 @@ class Handler:
 
 
 class Receiver(Handler):
+    def __init__(self, dispatcher, input_):
+        super().__init__()
+        self.__dispatcher = dispatcher
+        self.__input = input_
+
     def run(self):
-        messages = jim.receive(self._sock)
+        messages = self.__dispatcher.receive()
         while len(messages):
             msg = messages.pop()
-            self._input.put(msg)
+            self.__input.put(msg)
 
 
 class ConsoleOutput(Handler):
+    def __init__(self, input_):
+        super().__init__()
+        self._input = input_
+
     def run(self):
         request = self._input.get()
         if request.action == 'contact_list':
             print(request.account_name)
+        elif request.action == 'msg':
+            print('\n\r Message from {}: {}'.format(request.sender, request.text))
 
 
 class Client:
     def __init__(self, name):
         self.__name = name
         self.__sock = socket.socket()
+        self.__dispatcher = jim.Dispatcher(self.__sock, client_logger)
         input_ = Queue()
 
-        listener = Receiver(self.__sock, input_)
+        listener = Receiver(self.__dispatcher, input_)
         self.__listen_thread = Thread(target=listener)
         self.__listen_thread.daemon = True
 
-        handler = ConsoleOutput(self.__sock, input_)
+        handler = ConsoleOutput(input_)
         self.__handler_thread = Thread(target=handler)
         self.__handler_thread.daemon = True
 
     def connect(self, address, status='Yep, I am here!'):
         self.__sock.connect(address)
         request = jim.Message(action='presence', type='status', user={'account_name': self.__name, 'status': status})
-        jim.send(self.__sock, request)
-        if jim.receive(self.__sock):
+        self.__dispatcher.send(request)
+        if self.__dispatcher.receive():
             self.__listen_thread.start()
             self.__handler_thread.start()
             return True
@@ -100,7 +121,7 @@ class Client:
     def emit(self):
         while True:
             message = interact()
-            jim.send(self.__sock, message)
+            self.__dispatcher.send(message)
 
     def close(self):
         self.__listen_thread.is_alive = False

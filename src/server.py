@@ -1,10 +1,62 @@
 import select
 import socket
 import sys
+
+from log.server import server_logger
+
 import jim
-from config.params import *
 from console import Params
-from db.server_repo import ServerRepo
+from src.db.server_repo import ServerRepo
+from params import *
+
+
+class Dispatcher:
+    def __init__(self, sock, handler):
+        self.__sock = sock
+        self.client_name = None
+        self.__logger = server_logger
+        self.__handler = handler
+        self.__in = []
+        self.__out = []
+
+        self.status = False
+
+        # presence
+        self.receive()
+        self.process()
+        self.release()
+
+    def receive(self):
+        parcels = jim.receive(self.__sock, self.__logger)
+        self.__in.extend(parcels)
+
+    def process(self):
+        while len(self.__in):
+            request = self.__in.pop()
+            request.client_name = self.client_name
+            response = self.__handler.run_action(request)
+            if request.action == 'presence' and response.response == 200:
+                self.client_name = request.user_account_name
+                self.status = True
+            if isinstance(response, jim.Message):
+                self.__out.append(response)
+            else:
+                self.__out.extend(response)
+
+    def send(self, request):
+        self.__logger.info('Send {}.'.format(str(request)))
+        self.__sock.send(bytes(request))
+
+    def release(self, names=None):
+        while len(self.__out):
+            response = self.__out.pop()
+            if response.destination:
+                if response.destination in names:
+                    client_socket = names[response.destination]
+                    client_socket.send(bytes(response))
+            else:
+                self.__sock.send(bytes(response))
+            self.__logger.info('Send {}.'.format(str(response)))
 
 
 class Handler:
@@ -22,12 +74,8 @@ class Handler:
             contacts = client.contacts
             responses = [jim.success()]
             for contact in contacts:
-                responses.append(jim.Message(
-                    action='msg',
-                    text=request.text,
-                    to=contact.name,
-                    _from=request.client_name
-                ))
+                responses.append(
+                    jim.Message(action='msg', text=request.text, to=contact.name, _from=request.client_name))
             return responses
         elif request.action == 'get_contacts':
             contacts = self._repo.get_contact_list(request.client_name)
@@ -38,6 +86,8 @@ class Handler:
                 responses.append(jim.Message(action='contact_list', account_name=account_name))
             return responses
         elif request.action == 'add_contact':
+            if request.client_name == request.user_name:
+                return jim.error('It is not possible to add yourself')
             try:
                 self._repo.add_contact(request.client_name, request.user_name)
                 return jim.success()
@@ -73,17 +123,15 @@ class Server:
         while True:
             try:
                 client, address = self.__server.accept()
-                dispatcher = jim.Dispatcher(client)
-                dispatcher.receive()
-                dispatcher.process(self.__handler)
-                dispatcher.release()
+                dispatcher = Dispatcher(client, self.__handler)
             except OSError as e:
                 pass
             else:
                 print('Increase connection until {} with {}'.format(len(self.__clients) + 1, address))
-                self.__clients.append(client)
-                self.__dispatchers[client] = dispatcher
-                self.__names[dispatcher.client_name] = client
+                if dispatcher.status:
+                    self.__clients.append(client)
+                    self.__dispatchers[client] = dispatcher
+                    self.__names[dispatcher.client_name] = client
             finally:
                 r = []
                 w = []
@@ -107,7 +155,7 @@ class Server:
     def __process(self):
         while len(self.__in):
             dispatcher = self.__in.pop()
-            dispatcher.process(self.__handler)
+            dispatcher.process()
             self.__out.append(dispatcher)
 
     def __output(self, clients):

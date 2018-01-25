@@ -1,5 +1,6 @@
 import getopt
-from config.params import *
+
+from params import *
 
 
 class Params:

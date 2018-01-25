@@ -1,5 +1,6 @@
-from sqlalchemy import func, exists
-from db.server import session, Client
+from sqlalchemy import exists
+
+from src.db.server import session, Client
 
 
 class ServerRepo:

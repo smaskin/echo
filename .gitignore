@@ -2,5 +2,9 @@
 .idea
 .cache/
 __pycache__
-runtime/
-/db/server.db
+/runtime/
+/src/db/server.db
+/dist/
+/Echo.egg-info/
+/build/
+/echo_messenger.egg-info/

@@ -1,9 +1,9 @@
 import json
 import time
 
-from params import *
-
+MESSAGE_SIZE = 1024
 DELIMITER = '\n\r'
+DATE_FORMAT = ' %I:%M%p' # '%A, %d. %B %Y %I:%M%p'
 
 
 class Message:
@@ -67,7 +67,7 @@ class Message:
 
     @property
     def text(self):
-        return self.__raw['text']
+        return self.__raw['text'] if 'text' in self.__raw else None
 
 
 def success(response=200, **kwargs):
@@ -84,7 +84,13 @@ def error_request(text, **kwargs):
 
 def receive(sock, logger):
     requests = []
-    raw_bytes = sock.recv(MESSAGE_SIZE)
+    try:
+        raw_bytes = sock.recv(MESSAGE_SIZE)
+    except UnicodeDecodeError as e:
+        msg = 'Connection reset'
+        logger.info(msg)
+        requests.append(error_request(msg))
+        return []
 
     try:
         raw_string = raw_bytes.decode()

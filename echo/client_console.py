@@ -1,32 +1,29 @@
-import sys
-
-import jim
-from console import Params
-from src import client
+import client
+from helpers import jim, console
 
 ACTIONS = (
     {
         'action': 'msg',
-        'name': 'Послать сообщение',
+        'name': 'Send message',
         'params': ('text',)
     },
     {
         'action': 'get_contacts',
-        'name': 'Список контактов',
+        'name': 'Contact List',
     },
     {
         'action': 'add_contact',
-        'name': 'Добавить контакт',
+        'name': 'Add contact',
         'params': ('user_name',)
     },
     {
         'action': 'del_contact',
-        'name': 'Удалить контакт',
+        'name': 'Delete contact',
         'params': ('user_name',)
     },
     {
         'action': 'quit',
-        'name': 'Выйти'
+        'name': 'Quit'
     }
 )
 
@@ -34,14 +31,14 @@ ACTIONS = (
 def interact():
     print('\n'.join(['{}. {}'.format(key, action['name']) for key, action in enumerate(ACTIONS, 1)]))
     try:
-        num = abs(int(input('Выберите действие или введите сообщение: ')))
+        num = abs(int(input('Choose action: ')))
     except ValueError:
         num = 0
     config = ACTIONS[num - 1] if num <= len(ACTIONS) else ACTIONS[0]
     params = {'action': config['action']}
     if 'params' in config:
         for param in config['params']:
-            p = str(input('Выберите параметр "{}": '.format(param)))
+            p = str(input('Choose parameter "{}": '.format(param)))
             params[param] = p
     return jim.Message(**params)
 
@@ -53,10 +50,14 @@ def receive_callback(parcel):
         print('\nMessage from {}: {}'.format(parcel.sender, parcel.text))
 
 
-if __name__ == '__main__':
-    console_params = Params(sys.argv)
-    client = client.Client(console_params.console_host, console_params.account_name, receive_callback)
-    if client.connect():
+def main():
+    console_params = console.args()
+    cl = client.Client((console_params.address, console_params.port), console_params.user, receive_callback)
+    if cl.connect():
         while True:
             message = interact()
-            client.send(message)
+            cl.send(message)
+
+
+if __name__ == "__main__":
+    main()

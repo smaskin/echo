@@ -1,13 +1,10 @@
 import select
 import socket
-import sys
-
+from helpers import console, jim
+from db.server_repo import ServerRepo
 from log.server import server_logger
 
-import jim
-from console import Params
-from src.db.server_repo import ServerRepo
-from params import *
+WORKERS = 5
 
 
 class Dispatcher:
@@ -28,6 +25,8 @@ class Dispatcher:
 
     def receive(self):
         parcels = jim.receive(self.__sock, self.__logger)
+        if not parcels:
+            raise Exception
         self.__in.extend(parcels)
 
     def process(self):
@@ -118,6 +117,7 @@ class Server:
         self.__names = {}
         self.__in = []
         self.__out = []
+        print('Listen on {}'.format(address))
 
     def listen(self):
         while True:
@@ -127,11 +127,11 @@ class Server:
             except OSError as e:
                 pass
             else:
-                print('Increase connection until {} with {}'.format(len(self.__clients) + 1, address))
                 if dispatcher.status:
                     self.__clients.append(client)
                     self.__dispatchers[client] = dispatcher
                     self.__names[dispatcher.client_name] = client
+                    print('User "{}" from {} connected. Current {}.'.format(self.__user_name(client), address, len(self.__clients)))
             finally:
                 r = []
                 w = []
@@ -168,10 +168,18 @@ class Server:
 
     def __remove_client(self, c):
         self.__clients.remove(c)
+        print('User {} closed. Current {} '.format(self.__user_name(c), len(self.__clients)))
         c.close()
+
+    def __user_name(self, c):
+        return list(self.__names.keys())[list(self.__names.values()).index(c)]
+
+
+def main():
+    params = console.args()
+    s = Server((params.address, params.port))
+    s.listen()
 
 
 if __name__ == '__main__':
-    params = Params(sys.argv)
-    s = Server(params.server_host)
-    s.listen()
+    main()

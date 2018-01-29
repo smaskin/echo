@@ -7,3 +7,5 @@ handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)
 server_logger = logging.getLogger('server')
 server_logger.addHandler(handler)
 server_logger.setLevel(logging.INFO)
+
+

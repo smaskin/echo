@@ -1,6 +1,5 @@
 from sqlalchemy import exists
-
-from src.db.server import session, Client
+from db.server import session, Client
 
 
 class ServerRepo:

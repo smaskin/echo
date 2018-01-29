@@ -2,8 +2,7 @@ import socket
 from threading import Thread
 
 from log.client import client_logger
-
-import jim
+from helpers import jim
 
 
 def receiver(sock, logger, callback):
@@ -25,7 +24,12 @@ class Client:
         self.__listen_thread.daemon = True
 
     def connect(self):
-        self.__sock.connect(self.__host)
+        try:
+            self.__sock.connect(self.__host)
+        except ConnectionRefusedError:
+            print('Connection refused. Server unavailable.')
+            return False
+
         if not self.__send_presence():
             return False
         self.__listen_thread.start()

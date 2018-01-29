@@ -1,11 +1,14 @@
 import sys
 
+import time
+
+import client
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication
+from helpers import jim, console
 
-import jim
-from console import Params
-from src import client
+app = QApplication(sys.argv)
+w = uic.loadUi('echo/ui/client.ui')
 
 
 def receive_callback(parcel):
@@ -20,6 +23,14 @@ def receive_callback(parcel):
 class Handler:
     def __init__(self, client):
         self.__client = client
+        w.sendButton.clicked.connect(self.send_message)
+        w.newContactButton.clicked.connect(self.add_contact)
+        w.deleteContactButton.clicked.connect(self.delete_contact)
+        w.newContactInput.returnPressed.connect(w.newContactButton.click)
+        w.setWindowTitle('Echo ({})'.format(client.name))
+        w.show()
+
+        client.send(jim.Message(action='get_contacts'))
 
     def send_message(self):
         text = w.messageInput.toPlainText()
@@ -31,29 +42,33 @@ class Handler:
                 params['to'] = user_name
             if self.__client.send(jim.Message(**params)):
                 w.chatArea.addItem('{}: {}'.format(self.__client.name, text))
+                w.messageInput.clear()
 
     def add_contact(self):
         contact_name = w.newContactInput.text()
         if contact_name:
-            w.contactList.clear()
             self.__client.send(jim.Message(action='add_contact', user_name=contact_name))
+            time.sleep(0.2)
+            w.contactList.clear()
+            self.__client.send(jim.Message(action='get_contacts'))
+
+    def delete_contact(self):
+        selected_index = w.contactList.currentIndex()
+        if selected_index:
+            self.__client.send(jim.Message(action='del_contact', user_name=selected_index.data()))
+            time.sleep(0.2)
+            w.contactList.clear()
             self.__client.send(jim.Message(action='get_contacts'))
 
 
-if __name__ == '__main__':
-    console_params = Params(sys.argv)
-    client = client.Client(console_params.console_host, console_params.account_name, receive_callback)
-    if client.connect():
-
-        app = QApplication(sys.argv)
-
-        handler = Handler(client)
-        w = uic.loadUi('src/ui/client.ui')
-        w.sendButton.clicked.connect(handler.send_message)
-        w.newContactButton.clicked.connect(handler.add_contact)
-        w.show()
-
-        client.send(jim.Message(action='get_contacts'))
+def main():
+    console_params = console.args()
+    cl = client.Client((console_params.address, console_params.port), console_params.user, receive_callback)
+    if cl.connect():
+        handler = Handler(cl)
         sys.exit(app.exec_())
 
+
+if __name__ == "__main__":
+    main()
 

@@ -57,6 +57,13 @@
       <string>Contact list</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item alignment="Qt::AlignRight">
+       <widget class="QPushButton" name="deleteContactButton">
+        <property name="text">
+         <string>X</string>
+        </property>
+       </widget>
+      </item>
       <item>
        <widget class="QListWidget" name="contactList"/>
       </item>

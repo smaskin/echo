@@ -3,8 +3,10 @@
 .cache/
 __pycache__
 /runtime/
-/src/db/server.db
+/echo/db/server.db
 /dist/
 /Echo.egg-info/
 /build/
 /echo_messenger.egg-info/
+/env/
+/build.sh

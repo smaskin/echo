@@ -3,7 +3,7 @@ import time
 
 MESSAGE_SIZE = 1024
 DELIMITER = '\n\r'
-DATE_FORMAT = ' %I:%M%p' # '%A, %d. %B %Y %I:%M%p'
+DATE_FORMAT = ' %I:%M%p'
 
 
 class Message:

@@ -5,7 +5,6 @@ from helpers import console
 
 if __name__ == "__main__":
     console_params = console.args()
-
     if console_params.mode == 'server':
         server.main()
     elif console_params.mode == 'gui_client':

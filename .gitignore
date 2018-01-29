@@ -10,3 +10,4 @@ __pycache__
 /echo_messenger.egg-info/
 /env/
 /build.sh
+/db/server.db

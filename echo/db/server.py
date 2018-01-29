@@ -1,5 +1,4 @@
 import time
-
 import os
 from sqlalchemy import *
 from sqlalchemy.orm import *
@@ -53,4 +52,3 @@ engine = create_engine('sqlite:///{}'.format(os.path.join(os.path.dirname(os.pat
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
-

@@ -1,8 +1,7 @@
 import socket
 from threading import Thread
-
-from log.client import client_logger
-from helpers import jim
+from .log.client import client_logger
+from .helpers import jim
 
 
 def receiver(sock, logger, callback):

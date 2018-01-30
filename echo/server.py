@@ -1,8 +1,8 @@
 import select
 import socket
-from helpers import console, jim
-from db.server_repo import ServerRepo
-from log.server import server_logger
+from .helpers import console, jim
+from .db.server_repo import ServerRepo
+from .log.server import server_logger
 
 WORKERS = 5
 
@@ -175,11 +175,11 @@ class Server:
         return list(self.__names.keys())[list(self.__names.values()).index(c)]
 
 
-def main():
+def run():
     params = console.args()
     s = Server((params.address, params.port))
     s.listen()
 
 
 if __name__ == '__main__':
-    main()
+    run()

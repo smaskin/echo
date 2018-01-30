@@ -1,14 +1,13 @@
+import os
 import sys
-
 import time
-
-import client
 from PyQt5 import uic
 from PyQt5.QtWidgets import QApplication
-from helpers import jim, console
+from .helpers import jim, console
+from .client import Client
 
 app = QApplication(sys.argv)
-w = uic.loadUi('echo/ui/client.ui')
+w = uic.loadUi(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ui/client.ui'))
 
 
 def receive_callback(parcel):
@@ -61,13 +60,13 @@ class Handler:
             self.__client.send(jim.Message(action='get_contacts'))
 
 
-def main():
+def run():
     console_params = console.args()
-    cl = client.Client((console_params.address, console_params.port), console_params.user, receive_callback)
+    cl = Client((console_params.address, console_params.port), console_params.user, receive_callback)
     if cl.connect():
         handler = Handler(cl)
         sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
-    main()
+    run()

@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="echo-messenger",
-    version='0.1',
+    version='0.25',
     description='JIM messenger',
     long_description='Json instant messenger with presence control',
     url='https://github.com/smaskin/echo',
@@ -10,7 +10,7 @@ setup(
     keywords=['python', 'messenger', 'jim'],
     author='Sergey Maskin',
     author_email='s.maskin@mail.ru',
-    packages=['echo'],
+    packages=['echo', 'echo/helpers', 'echo/db', 'echo/log', 'echo/ui'],
     include_package_data=True,
     python_requires='>=3.5',
     install_requires=[

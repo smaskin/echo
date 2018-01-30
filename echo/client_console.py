@@ -1,5 +1,5 @@
-import client
-from helpers import jim, console
+from .client import Client
+from .helpers import jim, console
 
 ACTIONS = (
     {
@@ -50,9 +50,9 @@ def receive_callback(parcel):
         print('\nMessage from {}: {}'.format(parcel.sender, parcel.text))
 
 
-def main():
+def run():
     console_params = console.args()
-    cl = client.Client((console_params.address, console_params.port), console_params.user, receive_callback)
+    cl = Client((console_params.address, console_params.port), console_params.user, receive_callback)
     if cl.connect():
         while True:
             message = interact()
@@ -60,4 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run()

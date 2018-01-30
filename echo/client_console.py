@@ -20,10 +20,6 @@ ACTIONS = (
         'action': 'del_contact',
         'name': 'Delete contact',
         'params': ('user_name',)
-    },
-    {
-        'action': 'quit',
-        'name': 'Quit'
     }
 )
 
